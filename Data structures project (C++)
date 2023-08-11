@@ -1,0 +1,569 @@
+// TRANSPORT ROUTE MANGEMENT USING BLANCED BINARY TREES
+#include <iostream>
+#include <string>
+#include <cstring>
+#include <windows.h>
+#include <ctime>
+#include <conio.h>
+using namespace std;
+//Max utility function
+int MAX(int a, int b) {
+    if (a > b)
+        return a;
+    else
+        return b;
+}
+//:) simple nde to store stops
+class node {
+public:
+    //stop stop_students holds the number of students that will get on/ get off at a stop ;
+    // h = heigth of the node
+    int stop_students, h;
+    //data holds the name of the stop of the bus
+    //time holds the time of arrival.
+    string data, time;
+    node* left, * right;
+    node() {}
+    node(int stop_students, string data, string time) {
+        this->data = data;
+        this->stop_students = stop_students;
+        this->time = time;
+    }
+    //simplified display;
+    void display_node() {
+        cout << data << " : " << time << endl;
+    }
+    //detailed display
+    void display_node(int i) {
+        cout << data << " : " << time << "students getting on/off : " << stop_students << endl;
+    }
+    //setting the value of a node;
+    void set_node(int stop_students, string time, string data) {
+        this->data = data;
+        this->time = time;
+        this->stop_students = stop_students;
+    }
+};
+//height calculator
+int height(node* n) {
+    if (n == NULL)
+        return 0;
+    int lefth = height(n->left);
+    int righth = height(n->right);
+    if (righth > lefth)
+        return righth + 1;
+    else
+        return lefth + 1;
+}
+
+//balance calculator
+int balance_cal(node* n) {
+    if (n == NULL) {
+        return 0;
+    }
+    else {
+        int balance = height(n->left) - height(n->right);
+        return balance;
+    }
+}
+//pre-order predecessor finder
+node* min(node* root) {
+    node* temp = root;
+
+    while (temp->left != NULL)
+        temp = temp->left;
+
+    return temp;
+}
+//right rotation
+node* RightRotate(node* n) {
+    node* temp = new node;
+    temp = n->left;
+
+    n->left = temp->right;
+    temp->right = n;
+
+    n->h = 1 + MAX(height(n->left), height(n->right));
+    temp->h = 1 + MAX(height(temp->left), height(temp->right));
+    return temp;
+}
+//Left rotation
+node* LeftRotate(node* n) {
+    node* temp = new node;
+    temp = n->right;
+
+    n->right = temp->left;
+    temp->left = n;
+
+    n->h = 1 + MAX(height(n->left), height(n->right));
+    temp->h = 1 + MAX(height(temp->left), height(temp->right));
+    return temp;
+}
+//creation of the node//creating bus stop
+node* create_node(int stop_students, string time, string data) {
+    node* temp = new node;
+    temp->set_node(stop_students, time, data);
+    temp->left = temp->right = NULL;
+    temp->h = 1;
+    return temp;
+}
+//insertin of a node
+node* insert(node* root, int stop_students, string time, string data) {
+    if (root == NULL)
+        return create_node(stop_students, time, data);
+    if (time < root->time)
+        root->left = insert(root->left, stop_students, time, data);
+    else if (time > root->time)
+        root->right = insert(root->right, stop_students, time, data);
+    else
+        return root;
+
+    root->h = MAX(height(root->left), height(root->right));
+    int balance = balance_cal(root);
+
+    //check and bbalance the left
+    if (balance > 1) {
+        //skewed case
+        if (time < root->left->time)
+            return RightRotate(root);
+        //degenerate case
+        else if (time > root->left->time) {
+            //resolving from degenerate to skewed
+            root->left = LeftRotate(root->left);
+            //resolving skewed case
+            return RightRotate(root);
+        }
+    }
+    if (balance < -1) {
+        //skewed case
+        if (time > root->right->time)
+            return LeftRotate(root);
+        else if (time < root->right->time) {
+            root->right = RightRotate(root);
+            return LeftRotate(root);
+        }
+    }
+    return root;
+}
+// search buses
+node* search(node* root, string name) {
+    if (root == NULL) {
+        cout << "This bus does not exits";
+        return root;
+    }
+    else if (name < root->time) {
+        root = search(root->left, name);
+    }
+    else if (name > root->time) {
+        root = search(root->right, name);
+    }
+    else {
+        root->display_node();
+    }
+    return root;
+}
+//delete_node
+node* delete_node(node* root, string time) {
+    //cout<<"welcome to the delete_node"<<endl;
+    if (root == NULL)
+        return root;
+    else if (time > root->time)
+        root->right = delete_node(root->right, time);
+    else if (time < root->time)
+        root->left = delete_node(root->left, time);
+    else {
+        //no child
+        if (root->left == NULL and root->right == NULL)
+            return NULL;
+        //one - child: no left child case 
+        else if (root->left == NULL) {
+            node* temp = root->right;
+            delete(root);
+            return temp;
+        }
+        //one - child: no right child case 
+        else if (root->right == NULL) {
+            node* temp = root->left;
+            delete(root);
+            return temp;
+        }
+        //2 child case:
+        else {
+            node* temp = min(root->right);
+            root->data = temp->data;
+            root->time = temp->time;
+            root->stop_students = temp->stop_students;
+            root->right = delete_node(root->right, temp->time);
+        }
+    }
+
+    if (root == NULL)
+        return root;
+
+    root->h = height(root);
+    int balance = balance_cal(root);
+    //left balance check;
+    if (balance > 1) {
+        //the tree has become left heavy
+        if (balance_cal(root->left) >= 0)
+            return RightRotate(root);
+        else {
+            root->left = LeftRotate(root->left);
+            return RightRotate(root);
+        }
+    }
+    if (balance < -1) {
+        if (balance_cal(root->right) >= 0)
+            return LeftRotate(root);
+        else {
+            root->right = RightRotate(root->right);
+            return LeftRotate(root);
+        }
+    }
+    return root;
+}
+//alter the name of the stop
+//node* alter_name(node* root, string data) {
+
+//}
+//inorder of the node of the tree
+void inorder(node* root) {
+    if (root != NULL) {
+        inorder(root->left);
+        root->display_node();
+        inorder(root->right);
+    }
+    return;
+}
+
+
+//nested tree begins here :)
+class AVL_node {
+public:
+    node* bus;
+    AVL_node* left, * right;
+    string driver_name, number, bus_no;
+    int h_AVL;
+
+    void set(string driver_name, string number, string bus_no) {
+        this->driver_name = driver_name;
+        this->number = number;
+        this->bus_no = bus_no;
+    }
+    void display_AVL_node() {
+        cout << "Bus Number: " << bus_no << endl;
+        cout << "Driver    : " << driver_name << " : " << number << endl;
+        inorder(bus);
+    }
+};
+//creating a node
+AVL_node* create(node* n, string driver_name, string number, string bus_no) {
+    AVL_node* temp = new AVL_node;
+    temp->bus = n;
+    temp->left = temp->right = NULL;
+    temp->set(driver_name, number, bus_no);
+    return temp;
+}
+int height(AVL_node* n) {
+    if (n == NULL)
+        return 0;
+    int lefth = height(n->left);
+    int righth = height(n->right);
+    if (righth > lefth)
+        return righth + 1;
+    else
+        return lefth + 1;
+}
+
+//balance calculator
+int balance_cal(AVL_node* n) {
+    if (n == NULL) {
+        return 0;
+    }
+    else {
+        int balance = height(n->left) - height(n->right);
+        return balance;
+    }
+}
+//pre-order predecessor finder
+AVL_node* min(AVL_node* root) {
+    AVL_node* temp = root;
+    while (temp->left != NULL)
+        temp = temp->left;
+        
+    return temp;
+}
+//right rotation
+AVL_node* RightRotate(AVL_node* n) {
+    AVL_node* temp = new AVL_node;
+    temp = n->left;
+
+    n->left = temp->right;
+    temp->right = n;
+
+    n->h_AVL = 1 + MAX(height(n->left), height(n->right));
+    temp->h_AVL = 1 + MAX(height(temp->left), height(temp->right));
+    return temp;
+}
+//Left rotation
+AVL_node* LeftRotate(AVL_node* n) {
+    AVL_node* temp = new AVL_node;
+    temp = n->right;
+
+    n->right = temp->left;
+    temp->left = n;
+
+    n->h_AVL = 1 + MAX(height(n->left), height(n->right));
+    temp->h_AVL = 1 + MAX(height(temp->left), height(temp->right));
+    return temp;
+}
+//inoder searching 
+void search_inorder(AVL_node* root, string name) {
+    if (root != NULL) {
+        search_inorder(root->left, name);
+        search(root->bus, name);
+        search_inorder(root->right, name);
+    }
+    return;
+}
+//inserting a node into the tree
+AVL_node* insert(AVL_node* root, node* n, string driver_name, string number, string bus_no) {
+    if (root == NULL)
+        root = create(n, driver_name, number, bus_no);
+    if (bus_no < root->bus_no)
+        root->left = insert(root->left, n, driver_name, number, bus_no);
+    else if(bus_no > root->bus_no)
+        root->right = insert(root->right, n, driver_name, number, bus_no);
+    else
+        return root;
+        
+    root->h_AVL = MAX(height(root->left), height(root->right));
+    int balance = balance_cal(root);
+    if (balance > 1) {
+        //skewed case
+        if ( bus_no< root->left->bus_no)
+            return RightRotate(root);
+        //degenerate case
+        else if (bus_no > root->left->bus_no) {
+            //resolving from degenerate to skewed
+            root->left = LeftRotate(root->left);
+            //resolving skewed case
+            return RightRotate(root);
+        }
+    }
+    if (balance < -1) {
+        //skewed case
+        if (bus_no > root->right->bus_no)
+            return LeftRotate(root);
+        else if (bus_no < root->right->bus_no) {
+            root->right = RightRotate(root);
+            return LeftRotate(root);
+        }
+    }
+    return root;
+}
+//adding a node to specific sub tree
+AVL_node* search_insert(AVL_node* root, string bus_no, int stop_students, string time, string data) {
+    if (root == NULL) {
+        return root;
+    }
+    else if (bus_no < root->bus_no)
+        root->left = search_insert(root->left, bus_no, stop_students, time, data);
+    else if (bus_no > root->bus_no)
+        root->right = search_insert(root->right, bus_no, stop_students, time, data);
+    else
+        root->bus = insert(root->bus, stop_students, time, data);
+    return root;
+}
+
+// serach and delete a specific node
+AVL_node* search_delete(AVL_node* root, string bus_no, string time) {
+    if (root == NULL)
+        return root;
+    else if (bus_no < root->bus_no)
+        root->left = search_delete(root->left, bus_no, time);
+    else if (bus_no > root->bus_no)
+        root->right = search_delete(root->right, bus_no, time);
+    else
+        root->bus = delete_node(root->bus, time);
+
+    return root;
+}
+//editing a stop's information
+
+//printing the AVL tree
+void inorder(AVL_node* root) {
+    if (root != NULL) {
+        inorder(root->left);
+        root->display_AVL_node();
+        inorder(root->right);
+    }
+    return;
+}
+
+//decoration of cansole
+void gotoxy(int x, int y){
+    COORD c;
+    c.X = x;
+    c.Y = y;
+    SetConsoleCursorPosition(GetStdHandle(STD_OUTPUT_HANDLE), c);
+}
+void Intro() {
+    int i, j;
+    system("cls");
+    gotoxy(35, 3);
+    for (i = 0; i < 59; i++)
+    {
+        for (j = 0; j <= 3000000; j++);
+        cout << "\xB2";
+    }
+    for (i = 4; i < 30; i++)
+    {
+        gotoxy(93, i);
+        for (j = 0; j <= 3000000; j++);
+        cout << "\xB2";
+    }
+    int k = 93;
+
+    for (i = 0; i < 58; i++)
+    {
+        gotoxy(k, 30);
+        k--;
+        for (j = 0; j <= 3000000; j++);
+        cout << "\xB2";
+    }
+
+    for (i = 30; i > 3; i--)
+    {
+        gotoxy(35, i);
+        for (j = 0; j <= 3000000; j++);
+        cout << "\xB2";
+    }
+
+    gotoxy(39, 6);
+    for (i = 0; i < 50; i++)
+    {
+        for (j = 0; j <= 3000000; j++);
+        cout << "\xB2";
+    }
+    gotoxy(39, 9);
+    cout << "    Welcome to the FAST point management system!";
+    gotoxy(39, 12);
+    for (i = 0; i < 50; i++)
+    {
+        for (j = 0; j <= 3000000; j++);
+        cout << "\xB2";
+    }
+    gotoxy(56, 16);
+    for (j = 0; j <= 30000000; j++);
+    cout << " DEVELOPED BY";
+    gotoxy(56, 18);
+    for (j = 0; j <= 30000000; j++);
+    cout << " Abubakr Wamiq ";
+    gotoxy(56, 19);
+    for (j = 0; j <= 30000000; j++);
+    cout << "   21K-3574 ";
+    gotoxy(49, 25);
+    cout << "  (Press Any Key To Continue)";
+    getch();
+}
+void loading() {
+    int i, j;
+    system("cls");
+    gotoxy(55, 16);
+    cout << "LOADING PLEASE WAIT...";
+    gotoxy(55, 18);
+    cout << "=====================";
+    gotoxy(54, 19);
+    cout << "|";
+    gotoxy(75, 19);
+    cout << (" | ");
+    gotoxy(55, 20);
+    cout << "=====================";
+    gotoxy(55, 19);
+    for (i = 0; i <= 20; i++)
+    {
+        for (j = 0; j <= 10000000; j++);
+        cout << "\xB2";
+    }
+    system("cls");
+}
+int main() {
+    string name;
+    int c, a, e;;
+    string b, d, t;
+    AVL_node* root = new AVL_node, * temp = new AVL_node;
+    node* base = new node, * base2 = new node, * end = new node;
+    end = create_node(0, "7:45", "FAST University");
+    base = create_node(2, "7:00", "Askari 4");
+    root = create(base, "Obaid", "0332-13841875", "23B");
+    //adding a new bus;
+    // root = insert(root ,base2, "Kashif", "0332-13841875", "1");
+    // //adding a new stop for a particular bus
+    // root = search_insert(root, "23B", 2, "6:40", "Nippa");
+    // root = search_insert(root, "23B", 2, "6:35", "candy");
+    // root = search_insert(root, "23B", 2, "6:30", "Pacman");
+     //inorder(root);
+    Intro();
+    loading();
+    while (true) {
+        cout << "Welcome to the FAST point management system! \nPick the below options to continue:" << endl;
+        cout << "Enter 1 to add a new Bus route" << endl;
+        cout << "Enter 2 to add a new Pick/drop point" << endl;
+        cout << "Enter 3 to remove a Pick/drop point" << endl;
+        cout << "Enter 4 to alter a Pick/drop point" << endl;
+        cout << "Enter 5 to search for a Pick/drop point(lachman)" << endl;
+        cout << "Enter 6 to see all the points" << endl;
+        cout << "Enter 9 to leave" << endl;
+        cin >> c;
+        if (c == 9)
+            break;
+        switch (c) {
+        case 1:
+            cout << "Enter the bus number: ";
+            cin >> b;
+            cout << "Enter the name of the driver: ";
+            cin >> d;
+            cout << "Enter the number of the bus driver: ";
+            cin >> t;
+            root = insert(root, end, d, t, b);
+            break;
+        case 2:
+            cout << "Enter the Bus number: ";
+            cin >> b;
+            cout << "Enter the stop's name :";
+            cin >> t;
+            cout << "Enter the number of students: ";
+            cin >> e;
+            cout << "Enter the time for the stop: ";
+            cin >> d;
+            root = search_insert(root, b, e, d, t);
+            break;
+        case 3://delete stop in the bus
+            cout << "Enter the Bus number: ";
+            cin >> b;
+            cout << "Enter the time for the stop: ";
+            cin >> d;
+            root = search_delete(root, b, d);
+            break;
+        case 4:
+            break;
+        case 5:
+            cout << "Enter in the time to search";
+            cin >> name;
+            search_inorder(root, name);
+
+            break;
+        case 6:
+            inorder(root);
+            break;
+        default:
+            cout << "Pick a valid choice" << endl;
+            break;
+        }
+    }
+    inorder(root);
+    // cout<<"printing the tree"<<endl;
+    // inorder(base);
+    return 0;
+}
